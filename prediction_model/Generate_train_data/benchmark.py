@@ -100,7 +100,7 @@ def main(_):
             logfile = args.logfile
 
         # Set random parameters
-        batchsize = np.random.randint(1, 65, args.num_val)
+        batchsize = np.random.randint(1, 251, args.num_val)
         matsize = np.random.randint(1, 513, args.num_val)
         kernelsize = np.zeros(args.num_val, dtype=np.int32)
         channels_in = np.zeros(args.num_val, dtype=np.int32)
@@ -116,11 +116,10 @@ def main(_):
 
         timeUsed = np.zeros([args.num_val, args.repetitions])
 
-        tprint = time.time()
         for i in range(args.num_val):
             kernelsize[i] = np.random.randint(1, min(7, matsize[i]) + 1)
-            channels_in[i] = np.random.randint(1, 10000 / matsize[i])
-            channels_out[i] = np.random.randint(1, 10000 / matsize[i])
+            channels_in[i] = np.random.randint(1, 2000 / matsize[i])
+            channels_out[i] = np.random.randint(1, 2000 / matsize[i])
             if np.random.rand() <= args.backprop_ratio:
                 optimizer[i] = np.random.randint(1, len(optimizer_list))
             else:
@@ -129,6 +128,7 @@ def main(_):
         # Run benchmarks
 
         for i in range(args.num_val):
+            tprint = time.time()
             conv = benchmark_conv.convolution(
                 batchsize[i],
                 matsize[i],
@@ -144,8 +144,8 @@ def main(_):
                 optimizer_list[optimizer[i]])
 
             # Report progress
-            print "{}/{} bs{} {}x{}x{}-{} opt{}".format(i, args.num_val, batchsize[i],
-                                                        channels_in[i], matsize[i], matsize[i], channels_out[i], optimizer[i])
+            print "{}/{} bs{} {}x{}x{}-{} opt{}".format(i + 1, args.num_val, batchsize[i],
+                                                        channels_in[i], matsize[i], matsize[i], channels_out[i], optimizer[i]),
 
             if optimizer[i] == 0:
                 benchmark_op, benchmark_graph = conv.create_benchmark_op()
@@ -162,18 +162,12 @@ def main(_):
                     timeUsed[i, rep] = bm_conv.run_benchmark()
                 except Exception as e:
                     print('Error. bs{} imsize{}'.format(batchsize[i], matsize[i]))
-                    print(e)
+                    print(type(e).__name__)
                     timeUsed[i, rep] = None
+                    break # Stop trying this configuration
 
-            if (i + 1) % 100 == 0:
-                print("Iteration %d / %d: Finished convolution %d / %d "
-                      "(%.2f sec): t = %.3f ms \n"
-                      % (rep + 1,
-                         args.repetitions,
-                         i + 1,
-                         args.num_val,
-                         time.time() - tprint,
-                         np.median(timeUsed[i])))
+            print(" ({:.2f} sec): t = {:.3f} ms".format(time.time() - tprint,
+                                                           np.median(timeUsed[i])))
 
         # Generate dataframe and save results
         print("Generating dataframe and saving results")
@@ -282,6 +276,7 @@ def main(_):
             'timeUsed_std': np.std(timeUsed, 1)})
 
         df_results.to_pickle('%s.pkl' % logfile)
+        df_results.to_csv("{}.csv".format(logfile))
         np.save('%s.npy' % logfile, timeUsed)
 
 
