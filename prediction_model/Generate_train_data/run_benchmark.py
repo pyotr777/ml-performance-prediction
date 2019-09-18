@@ -22,11 +22,11 @@ class benchmark(object):
         self.iterations_benchmark = iterations_benchmark
         self.graph = graph
         self.config = tf.ConfigProto(
-                graph_options=tf.GraphOptions(
-                        optimizer_options=tf.OptimizerOptions(
-                                opt_level=tf.OptimizerOptions.L0)),
-                log_device_placement=False)
-
+            graph_options=tf.GraphOptions(
+                optimizer_options=tf.OptimizerOptions(
+                    opt_level=tf.OptimizerOptions.L0)),
+            log_device_placement=False)
+        self.config.gpu_options.allow_growth = True
 
     def run_benchmark(self):
         """Run benchmark, return time per iteration in ms"""
@@ -41,5 +41,7 @@ class benchmark(object):
             t = time.time()
             for _ in range(self.iterations_benchmark):
                 sess.run(self.benchmark_op)
-            timeUsed = (time.time()-t)/self.iterations_benchmark * 1000
+            timeUsed = (time.time() - t) / self.iterations_benchmark * 1000
+            sess.close()
+        tf.reset_default_graph()
         return timeUsed
