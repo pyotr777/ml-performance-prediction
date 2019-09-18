@@ -39,7 +39,7 @@ parser.add_argument('--device', type=str, default='',
                     help='Device name as appearing in logfile')
 parser.add_argument('--iter_benchmark', type=int, default=50,
                     help='Number of iterations for benchmark')
-parser.add_argument('--iter_warmup', type=int, default=1,
+parser.add_argument('--iter_warmup', type=int, default=0,
                     help='Number of iterations for warm-up')
 parser.add_argument('--repetitions', type=int, default=5,
                     help='Number of repetitions of the same experiment')
@@ -109,7 +109,7 @@ def main(_):
         optimizer = np.zeros(args.num_val, dtype=np.int32)
         precision = (np.ones(args.num_val) * 32).astype(int)  # np.random.choice([16,32],args.num_val)
         padding = np.random.randint(0, 2, args.num_val)
-        activation_fct = np.random.randint(0, 4, args.num_val)
+        activation_fct = np.random.randint(0, len(activation_list), args.num_val)
         use_bias = np.random.choice([True, False], args.num_val)
 
         gpu_index = np.arange(args.num_val) % (len(devlist))
@@ -164,10 +164,10 @@ def main(_):
                     print('Error. bs{} imsize{}'.format(batchsize[i], matsize[i]))
                     print(type(e).__name__)
                     timeUsed[i, rep] = None
-                    break # Stop trying this configuration
+                    break  # Stop trying this configuration
 
             print(" ({:.2f} sec): t = {:.3f} ms".format(time.time() - tprint,
-                                                           np.median(timeUsed[i])))
+                                                        np.median(timeUsed[i])))
 
         # Generate dataframe and save results
         print("Generating dataframe and saving results")

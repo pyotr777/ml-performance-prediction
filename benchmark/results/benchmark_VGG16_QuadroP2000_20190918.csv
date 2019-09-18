@@ -1,0 +1,7 @@
+operation, imsize, precision (bits), batchsize,time per batch (ms), performance (img/sec), memory use (MB), comment
+VGG-16, 224, 32, 7, 533.658, 13.117, 3402.432, mouse
+VGG-16, 224, 32, 8, 559.735, 14.292, 3467.737, mouse
+VGG-16, 224, 32, 9, 586.316, 15.350, 3535.448, mouse
+VGG-16, 224, 32, 7, 538.770, 12.993, 3417.210, mouse
+VGG-16, 224, 32, 8, 562.093, 14.233, 3482.519, mouse
+VGG-16, 224, 32, 9, 588.264, 15.299, 3550.233, mouse
