@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 import time
 from tensorflow.python.client import timeline
@@ -25,11 +27,11 @@ class benchmark(object):
         self.iterations_timeline = iterations_timeline
         self.graph = graph
         self.config = tf.ConfigProto(
-                graph_options=tf.GraphOptions(
-                        optimizer_options=tf.OptimizerOptions(
-                                opt_level=tf.OptimizerOptions.L0)),
-                log_device_placement=False)
-
+            graph_options=tf.GraphOptions(
+                optimizer_options=tf.OptimizerOptions(
+                    opt_level=tf.OptimizerOptions.L0)),
+            log_device_placement=False)
+        self.config.gpu_options.allow_growth = True
 
     def run_benchmark(self):
         """Run benchmark"""
@@ -44,9 +46,8 @@ class benchmark(object):
             t = time.time()
             for _ in range(self.iterations_benchmark):
                 sess.run(self.benchmark_op)
-            timeUsed = (time.time()-t)/self.iterations_benchmark
+            timeUsed = (time.time() - t) / self.iterations_benchmark
         return timeUsed
-
 
     def run_timeline(self, logfile, batchsize):
         """Run benchmark with generation of timeline"""
@@ -70,14 +71,13 @@ class benchmark(object):
                 many_runs_timeline.update_timeline(chrome_trace)
 
             print("Time for timeline run: %.3f ms"
-                    %((time.time()-t_start)*1000/self.iterations_timeline))
+                  % ((time.time() - t_start) * 1000 / self.iterations_timeline))
 
-            many_runs_timeline.save('%s_%dbatch_timeline.json' % (logfile,batchsize))
+            many_runs_timeline.save('%s_%dbatch_timeline.json' % (logfile, batchsize))
 
-            train_writer.add_run_metadata(run_metadata,'single convolution')
+            train_writer.add_run_metadata(run_metadata, 'single convolution')
             train_writer.close()
         return
-
 
     def get_memory_use(self):
         """Evaluates memory usage"""

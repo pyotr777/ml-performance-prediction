@@ -4,16 +4,16 @@ import time
 import os
 
 gpus = range(0, 1)
-batchsizes = [7, 8, 9]  # + range(10, 200, 10) + range(200, 501, 50)
+batchsizes = [7, 8, 9] + range(10, 251, 10)
 # CHANGE HOST NAME
 host = "mouse"
 
-os.chdir("/model")
+# os.chdir("/model")
 gpu_model = multigpuexec.getGPUinfo(0, query="name", get_cuda=False).strip().replace(" ", "")
 print gpu_model
 
 # imgsize = 224
-command = "python benchmark.py --testVGG16 --no_timeline --iter_benchmark 50 --device {} --comment {}".format(
+command = "python benchmark.py --testVGG16 --no_timeline --saveto results --iter_benchmark 50 --device {} --comment {}".format(
     gpu_model, host)
 tasks = []
 
