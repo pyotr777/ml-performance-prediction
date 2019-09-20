@@ -7,12 +7,11 @@ import os
 import argparse
 import tensorflow as tf
 import time
-from utils_tf import benchmark_matmul, benchmark_conv, benchmark_conv_mult, benchmark_VGG16
+from utils_tf import benchmark_matmul, benchmark_conv, benchmark_conv_mult, benchmark_VGG16, benchmark_VGG16_keras
 from utils_tf import run_benchmark
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
-
 
 parser = argparse.ArgumentParser('Benchmarking different aspects of a machine learning algorithm')
 
@@ -55,6 +54,8 @@ parser.add_argument('--use_tf_layers', action="store_true", default=False, help=
 parser.add_argument('--imgsize', type=int, default=224, help='Size of (square) images')
 parser.add_argument('--numclasses', type=int, default=1000, help='Number of image classes')
 parser.add_argument('--optimizer', type=str, default='sgd', help='Optimzer used for VGG-16 (sgd or rmsprop)')
+parser.add_argument('--keras', action="store_true", default=False, help='Use benchmark_VGG16_keras')
+parser.add_argument('--summary', action="store_true", default=False, help='Print model summary')
 
 args = parser.parse_args()
 RES_DIR = args.saveto
@@ -226,49 +227,66 @@ def main(_):
             logfile = args.logfile
         print("Save logfile to {}".format(logfile))
 
-        model = benchmark_VGG16.VGG16(args)
+        if args.keras:
+            print("========================================")
+            print("Start training keras VGG-16")
+            timeUsed, mem = benchmark_VGG16_keras.benchmark_VGG16(imgwidth=args.imgsize,
+                                                                  imgheight=args.imgsize,
+                                                                  numclasses=args.numclasses,
+                                                                  optimizer=args.optimizer,
+                                                                  iterations=args.iter_benchmark,
+                                                                  batchsize=args.batchsize,
+                                                                  precision=args.precision,
+                                                                  logfile=logfile,
+                                                                  generate_timeline=not args.no_timeline,
+                                                                  comment=args.comment,
+                                                                  summary=args.summary)
+            print("Training VGG-16 (imsize {}, batchsize {}): {}ms, {} MB used".format(args.imgsize,
+                                                                                       args.batchsize, timeUsed, mem))
+        else:
+            model = benchmark_VGG16.VGG16(args)
 
-        train_op, vgg16_graph = model.create_benchmark_op()
+            train_op, vgg16_graph = model.create_benchmark_op(args.summary)
 
-        bm_vgg16 = run_benchmark.benchmark(
-            train_op,
-            args.iter_warmup,
-            args.iter_benchmark,
-            args.iter_timeline,
-            vgg16_graph)
+            bm_vgg16 = run_benchmark.benchmark(
+                train_op,
+                args.iter_warmup,
+                args.iter_benchmark,
+                args.iter_timeline,
+                vgg16_graph)
 
-        print("========================================\n")
-        print("Start training VGG-16")
-        timeUsed = bm_vgg16.run_benchmark()
+            print("========================================\n")
+            print("Start training VGG-16")
+            timeUsed = bm_vgg16.run_benchmark()
 
-        print("\nTraining VGG-16 (%dx%d pixel, float%d, batchsize %d): "
-              "%.3f ms per batch / %.3f images per sec)"
-              % (args.imgsize,
-                 args.imgsize,
-                 args.precision,
-                 args.batchsize,
-                 timeUsed * 1000,
-                 args.batchsize / timeUsed))
+            print("\nTraining VGG-16 (%dx%d pixel, float%d, batchsize %d): "
+                  "%.3f ms per batch / %.3f images per sec)"
+                  % (args.imgsize,
+                     args.imgsize,
+                     args.precision,
+                     args.batchsize,
+                     timeUsed * 1000,
+                     args.batchsize / timeUsed))
 
-        if not args.no_saving:
-            if not os.path.isfile('%s.csv' % logfile):
-                header = ('operation, imsize, precision (bits), batchsize,'
-                          'time per batch (ms), performance (img/sec), '
-                          'memory use (MB), comment\n')
-                f = open('%s.csv' % logfile, 'a+')
-                f.write(header)
-                f.close()
+            if not args.no_saving:
+                if not os.path.isfile('%s.csv' % logfile):
+                    header = ('operation, imsize, precision (bits), batchsize,'
+                              'time per batch (ms), performance (img/sec), '
+                              'memory use (MB), comment\n')
+                    f = open('%s.csv' % logfile, 'a+')
+                    f.write(header)
+                    f.close()
 
-            if use_gpu:
-                mem = bm_vgg16.get_memory_use()
-            else:
-                mem = 0
-            with open('%s.csv' % logfile, 'a+') as f:
-                f.write(model.generate_logtext(timeUsed, mem))
+                if use_gpu:
+                    mem = bm_vgg16.get_memory_use()
+                else:
+                    mem = 0
+                with open('%s.csv' % logfile, 'a+') as f:
+                    f.write(model.generate_logtext(timeUsed, mem))
 
-        if not args.no_timeline:
-            bm_vgg16.run_timeline(logfile, args.batchsize)
-        print("\n========================================\n\n")
+            if not args.no_timeline:
+                bm_vgg16.run_timeline(logfile, args.batchsize)
+            print("\n========================================\n\n")
 
 
 if __name__ == '__main__':

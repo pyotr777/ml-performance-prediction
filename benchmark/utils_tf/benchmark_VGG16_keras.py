@@ -9,6 +9,7 @@ import keras
 import numpy as np
 import time
 
+
 def benchmark_VGG16(
         imgwidth,
         imgheight,
@@ -18,64 +19,73 @@ def benchmark_VGG16(
         batchsize,
         precision,
         logfile,
-        generate_timeline):
+        generate_timeline,
+        comment,
+        summary=False):
 
     # Generate synthetic data
-    datatype = eval('np.float%d' %(precision))
+    datatype = eval('np.float%d' % (precision))
     batch_data = np.zeros(
-            [batchsize,imgwidth,imgheight,3],
-            dtype=datatype)
+        [batchsize, imgwidth, imgheight, 3],
+        dtype=datatype)
     batch_label = np.zeros(
-            [batchsize,numclasses],
-            dtype=np.int16)
-
+        [batchsize, numclasses],
+        dtype=np.int16)
 
     run_metadata = tf.RunMetadata()
 
     # Define model
     model = keras.applications.VGG16(
-            include_top=True,
-            weights=None,
-            input_tensor=None,
-            input_shape=[imgwidth,imgheight,3],
-            pooling=None,
-            classes=numclasses)
+        include_top=True,
+        weights=None,
+        input_tensor=None,
+        input_shape=[imgwidth, imgheight, 3],
+        pooling=None,
+        classes=numclasses)
 
     # Define optimizer
-    if optimizer=='sgd':
+    if optimizer == 'sgd':
         opt = keras.optimizers.SGD(lr=0.01)
-    elif optimizer=='rmsprop':
+    elif optimizer == 'rmsprop':
         opt = keras.optimizers.rmsprop(lr=0.0001)
+
+    if summary:
+        print(model.summary())
 
     # Compile model
     model.compile(optimizer=opt, loss='categorical_crossentropy')
 
     # Run warm-up
-    model.train_on_batch(batch_data,batch_label)
+    model.train_on_batch(batch_data, batch_label)
 
     # Run benchmark
     t_start = time.time()
     for i in range(iterations):
-        model.train_on_batch(batch_data,batch_label)
-    dur = time.time()-t_start
+        model.train_on_batch(batch_data, batch_label)
+    dur = time.time() - t_start
 
-    img_per_sec = (iterations*batchsize)/dur
+    img_per_sec = (iterations * batchsize) / dur
+    mem = 0
+    timeUsed = dur / iterations * 1000.  # ms
 
-    logtext = ('VGG-16, %d, %d, %d, %.3f\n'
-            %(imgwidth,precision,batchsize,img_per_sec))
-    with open('%s.csv'%logfile,'a+') as f:
+    logtext = ('keras VGG-16, {:d}, {:d}, {:d}, {:.3f}, {:.3f}, {:d}, {}\n'.format(imgwidth,
+                                                                                   precision, batchsize, timeUsed,
+                                                                                   img_per_sec, mem, comment))
+    with open('%s.csv' % logfile, 'a+') as f:
         f.write(logtext)
-
 
     if generate_timeline:
         run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-        tensorboard = keras.callbacks.TensorBoard(log_dir='%s_tb'%logfile, histogram_freq=1, write_graph=True, write_images=False)
-        model.compile(optimizer=opt, loss='categorical_crossentropy', options=run_options, run_metadata=run_metadata)
-        model.train_on_batch(batch_data,batch_label,callbacks=[tensorboard])
-
+        # tensorboard = keras.callbacks.TensorBoard(
+        #     log_dir='%s_tb' % logfile, histogram_freq=1, write_graph=True, write_images=False)
+        model.compile(optimizer=opt, loss='categorical_crossentropy', options=run_options,
+                      run_metadata=run_metadata)
+        model.train_on_batch(batch_data, batch_label)  # , callbacks=[tensorboard])
 
         fetched_timeline = timeline.Timeline(run_metadata.step_stats)
         chrome_trace = fetched_timeline.generate_chrome_trace_format()
-        with open('%s_timeline.json'%logfile, 'w') as f:
+        filename = '{}_timeline.json'.format(logfile)
+        with open(filename, 'w') as f:
             f.write(chrome_trace)
-    return img_per_sec
+        print("Timeline: {}".format(filename))
+    return timeUsed, mem
